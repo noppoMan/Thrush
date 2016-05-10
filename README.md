@@ -55,7 +55,7 @@ _ = Promise<Int> { resolve, reject in
 
 ### all
 
-The `Promise.all(promises: [Promise<T>])` method returns a promise that resolves when all of the promises in the promises argument have resolved, or rejects with the reason of the first passed promise that rejects.
+The `Thrush.all(promises: [Promise<T>])` method returns a promise that resolves when all of the promises in the promises argument have resolved, or rejects with the reason of the first passed promise that rejects.
 
 **This is performed as parallel**
 
@@ -81,7 +81,7 @@ Thrush.all(promises: [p1, p2]).then {
 
 ### map
 
-The `Promise.map(promises: [Promise<T>])` method returns a promise that resolves when all of the promises in the promises argument have resolved, or rejects with the reason of the first passed promise that rejects.
+The `Thrush.map(promises: [Promise<T>])` method returns a promise that resolves when all of the promises in the promises argument have resolved, or rejects with the reason of the first passed promise that rejects.
 
 **This is performed as in order**
 
