@@ -9,18 +9,19 @@
 public struct Thrush {
     
     public static func all<T>(promises: [Promise<T>]) -> Promise<[T]> {
-        var results = [T]()
         var canceled = false
+        var flags = [Int: T]()
         
         return Promise<[T]> { resolve, reject in
-            for promise in promises {
-                promise.then {
+            for e in promises.enumerated() {
+                e.element.then {
                     if canceled {
                         return
                     }
-                    results.append($0)
-                    if results.count == promises.count {
-                        resolve(results)
+                    flags[e.offset] = $0
+                    if flags.count == promises.count {
+                        let results = flags.sorted(isOrderedBefore: { $0.0 < $1.0 })
+                        resolve(results.map{ _, v in v })
                     }
                 }
                 .failure {

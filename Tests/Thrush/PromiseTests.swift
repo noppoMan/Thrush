@@ -15,9 +15,11 @@ enum Error: ErrorProtocol {
 }
 
 class PromiseTests: XCTestCase {
-    static var allTests: [(String, PromiseTests -> () throws -> Void)] {
+    static var allTests: [(String, (PromiseTests) -> () throws -> Void)] {
         return [
                    ("testPromise", testPromise),
+                   ("testAll", testAll),
+                   ("testMap", testMap)
         ]
     }
     
@@ -38,11 +40,11 @@ class PromiseTests: XCTestCase {
             }
             .then {
                 XCTAssertEqual(4, $0)
-            }
+        }
         
         
         _ = Promise<Int> { resolve, reject in
-                resolve(1)
+            resolve(1)
             }
             .then { _ -> Promise<Int> in
                 return Promise<Int> { _, reject in
@@ -54,14 +56,28 @@ class PromiseTests: XCTestCase {
             }
             .failure {
                 XCTAssertNotNil($0)
+        }
+    }
+    
+    func testAll() {
+        let p1 = Promise<Int> { resolve, _ in
+            let time = dispatch_time(DISPATCH_TIME_NOW, Int64(1 * NSEC_PER_SEC))
+            dispatch_after(time, dispatch_get_main_queue()) {
+                resolve(1)
             }
-        
-        Thrush.all(promises: [Promise<Int>.resolve(1), Promise<Int>.resolve(2)]).then {
-            XCTAssertEqual([1, 2], $0)
         }
         
+        Thrush.all(promises: [p1, Promise<Int>.resolve(2)]).then {
+            XCTAssertEqual([1, 2], $0)
+            CFRunLoopStop(CFRunLoopGetCurrent())
+        }
+        
+        CFRunLoopRun()
+    }
+    
+    func testMap(){
         let p1 = Promise<Int> { resolve, _ in
-            let time = dispatch_time(DISPATCH_TIME_NOW, Int64(1))
+            let time = dispatch_time(DISPATCH_TIME_NOW, Int64(1 * NSEC_PER_SEC))
             dispatch_after(time, dispatch_get_main_queue()) {
                 resolve(1)
             }

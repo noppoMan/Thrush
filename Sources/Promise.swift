@@ -14,15 +14,15 @@ enum State {
 
 public final class Promise<T> {
     
-    public typealias Resolver = T -> ()
+    public typealias Resolver = (T) -> ()
     
-    public typealias Rejector = ErrorProtocol -> ()
+    public typealias Rejector = (ErrorProtocol) -> ()
     
     public var handler: (Resolver, Rejector) -> ()
     
-    private var onSuccess: T -> () = { _ in }
+    private var onSuccess: (T) -> () = { _ in }
     
-    private var onFailuer: ErrorProtocol -> () = { _ in }
+    private var onFailuer: (ErrorProtocol) -> () = { _ in }
     
     private var onFinally: () -> () = { _ in }
     
@@ -48,13 +48,13 @@ public final class Promise<T> {
         }
     }
     
-    public func then<X>(_ callback: T -> X) -> Promise<X> {
+    public func then<X>(_ callback: (T) -> X) -> Promise<X> {
         attemptInitialize()
         attemptInvoke()
         return reserve(callback)
     }
     
-    private func reserve<X>(_ callback: T -> X) -> Promise<X> {
+    private func reserve<X>(_ callback: (T) -> X) -> Promise<X> {
         let promise = Promise<X>{ [unowned self] resolve, reject in
             switch self.state {
             case .Fulfilled:
@@ -75,13 +75,13 @@ public final class Promise<T> {
         return promise
     }
     
-    public func then<X>(_ callback: T -> Promise<X>) -> Promise<X> {
+    public func then<X>(_ callback: (T) -> Promise<X>) -> Promise<X> {
         attemptInitialize()
         attemptInvoke()
         return reserve(callback)
     }
     
-    public func reserve<X>(_ callback: T -> Promise<X>) -> Promise<X>{
+    public func reserve<X>(_ callback: (T) -> Promise<X>) -> Promise<X>{
         let promise = Promise<X>{ [unowned self] resolve, reject in
             switch self.state {
             case .Fulfilled:
@@ -108,7 +108,7 @@ public final class Promise<T> {
         return reserve { _ in promise }
     }
     
-    public func failure(_ callback: ErrorProtocol -> ()) -> Self {
+    public func failure(_ callback: (ErrorProtocol) -> ()) -> Self {
         attemptInvoke()
         if state == .Rejected {
             callback(error!)
@@ -144,7 +144,7 @@ public final class Promise<T> {
         }
     }
     
-    private func triggerNext<X>(_ callback: T -> Promise<X>, result: T, resolve: X -> Void,reject: Rejector) {
+    private func triggerNext<X>(_ callback: (T) -> Promise<X>, result: T, resolve: (X) -> Void,reject: Rejector) {
         let nextPromise: Promise<X> = callback(result)
         nextPromise.then {
             resolve($0)
@@ -155,7 +155,9 @@ public final class Promise<T> {
         if let next = self.invokeHandler {
             promise.invokeHandler = next
         } else {
-            promise.invokeHandler = self.invoke
+            promise.invokeHandler = { [unowned self] in
+                self.invoke()
+            }
         }
         
         promise.initialized = self.initialized
