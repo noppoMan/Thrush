@@ -48,6 +48,12 @@ public final class Promise<T> {
         }
     }
     
+    public static func reject<T>(_ error: ErrorProtocol) -> Promise<T> {
+        return Promise<T> { _, reject in
+            reject(error)
+        }
+    }
+    
     public func then<X>(_ callback: (T) -> X) -> Promise<X> {
         attemptInitialize()
         attemptInvoke()
