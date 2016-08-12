@@ -16,13 +16,13 @@ public final class Promise<T> {
     
     public typealias Resolver = (T) -> ()
     
-    public typealias Rejector = (ErrorProtocol) -> ()
+    public typealias Rejector = (Error) -> ()
     
     public var handler: (Resolver, Rejector) -> ()
     
     private var onSuccess: (T) -> () = { _ in }
     
-    private var onFailuer: (ErrorProtocol) -> () = { _ in }
+    private var onFailuer: (Error) -> () = { _ in }
     
     private var onFinally: () -> () = { _ in }
     
@@ -30,15 +30,15 @@ public final class Promise<T> {
     
     private var result: T?
     
-    private var error: ErrorProtocol?
+    private var error: Error?
     
-    private var invokeHandler :(() -> ())?
+    private var promiseCallback :(() -> ())?
     
     private var initialized = false
     
-    private var invoked = false
+    private var handled = false
     
-    public init(handler: (Resolver, Rejector) -> ()) {
+    public init(handler:  @escaping (Resolver, Rejector) -> ()) {
         self.handler = handler
     }
     
@@ -48,19 +48,19 @@ public final class Promise<T> {
         }
     }
     
-    public static func reject<T>(_ error: ErrorProtocol) -> Promise<T> {
+    public static func reject<T>(_ error: Error) -> Promise<T> {
         return Promise<T> { _, reject in
             reject(error)
         }
     }
     
-    public func then<X>(_ callback: (T) -> X) -> Promise<X> {
+    public func then<X>(_ callback: @escaping (T) -> X) -> Promise<X> {
         attemptInitialize()
         attemptInvoke()
         return reserve(callback)
     }
     
-    private func reserve<X>(_ callback: (T) -> X) -> Promise<X> {
+    private func reserve<X>(_ callback: @escaping (T) -> X) -> Promise<X> {
         let promise = Promise<X>{ [unowned self] resolve, reject in
             switch self.state {
             case .Fulfilled:
@@ -76,18 +76,18 @@ public final class Promise<T> {
             }
         }
         
-        promise.invoke()
-        passInvoker(to: promise)
+        promise.handle()
+        passPromiseCallback(to: promise)
         return promise
     }
     
-    public func then<X>(_ callback: (T) -> Promise<X>) -> Promise<X> {
+    public func then<X>(_ callback:  @escaping (T) -> Promise<X>) -> Promise<X> {
         attemptInitialize()
         attemptInvoke()
         return reserve(callback)
     }
     
-    public func reserve<X>(_ callback: (T) -> Promise<X>) -> Promise<X>{
+    public func reserve<X>(_ callback: @escaping (T) -> Promise<X>) -> Promise<X>{
         let promise = Promise<X>{ [unowned self] resolve, reject in
             switch self.state {
             case .Fulfilled:
@@ -101,8 +101,8 @@ public final class Promise<T> {
                 self.onFailuer = reject
             }
         }
-        promise.invoke()
-        passInvoker(to: promise)
+        promise.handle()
+        passPromiseCallback(to: promise)
         return promise
     }
     
@@ -114,7 +114,7 @@ public final class Promise<T> {
         return reserve { _ in promise }
     }
     
-    public func failure(_ callback: (ErrorProtocol) -> ()) -> Self {
+    public func `catch`(_ callback: @escaping (Error) -> ()) -> Self {
         attemptInvoke()
         if state == .Rejected {
             callback(error!)
@@ -124,7 +124,7 @@ public final class Promise<T> {
         return self
     }
     
-    public func finally(_ callback: () -> ()) -> Self  {
+    public func finally(_ callback: @escaping () -> ()) -> Self  {
         attemptInvoke()
         if state != .Pending {
             callback()
@@ -134,35 +134,37 @@ public final class Promise<T> {
         return self
     }
     
-    private func invoke() {
-        invoked = true
+    private func handle() {
+        handled = true
         handler(resolve, reject)
     }
     
     private func attemptInvoke() {
-        if !invoked { invoke() }
+        if !handled { handle() }
     }
     
     private func attemptInitialize() {
         if !initialized {
-            invokeHandler?()
+            promiseCallback?()
             initialized = true
         }
     }
     
-    private func triggerNext<X>(_ callback: (T) -> Promise<X>, result: T, resolve: (X) -> Void,reject: Rejector) {
+    private func triggerNext<X>(_ callback: (T) -> Promise<X>, result: T, resolve: @escaping (X) -> Void,reject: Rejector) {
         let nextPromise: Promise<X> = callback(result)
-        nextPromise.then {
-            resolve($0)
-            }.failure(reject)
+        _ = nextPromise
+            .then {
+                resolve($0)
+            }
+            .`catch`(reject)
     }
     
-    private func passInvoker<X>(to promise: Promise<X>) {
-        if let next = self.invokeHandler {
-            promise.invokeHandler = next
+    private func passPromiseCallback<X>(to promise: Promise<X>) {
+        if let next = self.promiseCallback {
+            promise.promiseCallback = next
         } else {
-            promise.invokeHandler = { [unowned self] in
-                self.invoke()
+            promise.promiseCallback = { [unowned self] in
+                self.handle()
             }
         }
         
@@ -176,7 +178,7 @@ public final class Promise<T> {
         onFinally()
     }
     
-    private func reject(_ e: ErrorProtocol) {
+    private func reject(_ e: Error) {
         state = .Rejected
         error = e
         onFailuer(error!)

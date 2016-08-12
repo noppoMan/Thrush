@@ -14,17 +14,17 @@ public struct Thrush {
         
         return Promise<[T]> { resolve, reject in
             for e in promises.enumerated() {
-                e.element.then {
+                _ = e.element.then {
                     if canceled {
                         return
                     }
                     flags[e.offset] = $0
                     if flags.count == promises.count {
-                        let results = flags.sorted(isOrderedBefore: { $0.0 < $1.0 })
+                        let results = flags.sorted(by: { $0.0 < $1.0 })
                         resolve(results.map{ _, v in v })
                     }
                 }
-                .failure {
+                .`catch` {
                     if !canceled {
                         canceled = true
                         reject($0)
@@ -39,7 +39,7 @@ public struct Thrush {
             var results = [T]()
             var index = 0
             func _series(_ current: Promise<T>) {
-                current.then {
+                _ = current.then {
                     results.append($0)
                     if results.count == promises.count {
                         resolve(results)
@@ -48,7 +48,7 @@ public struct Thrush {
                     index += 1
                     _series(promises[index])
                     }
-                    .failure {
+                    .`catch` {
                         reject($0)
                     }
             }
