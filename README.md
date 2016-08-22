@@ -42,7 +42,7 @@ _ = Promise<Int> { resolve, reject in
             reject(SomethingError)
         }
     }
-    .failure {
+    .`catch` {
         print($0)
     }
     .finally {
