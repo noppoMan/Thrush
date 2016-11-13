@@ -18,7 +18,7 @@ public final class Promise<T> {
     
     public typealias Rejector = (Error) -> ()
     
-    public var handler: (Resolver, Rejector) -> ()
+    public var handler: (@escaping Resolver, @escaping Rejector) -> ()
     
     private var onSuccess: (T) -> () = { _ in }
     
@@ -38,7 +38,7 @@ public final class Promise<T> {
     
     private var handled = false
     
-    public init(handler:  @escaping (Resolver, Rejector) -> ()) {
+    public init(handler: @escaping (@escaping Resolver, @escaping Rejector) -> ()) {
         self.handler = handler
     }
     
@@ -91,7 +91,7 @@ public final class Promise<T> {
         let promise = Promise<X>{ [unowned self] resolve, reject in
             switch self.state {
             case .Fulfilled:
-                self.triggerNext(callback, result: self.result!,resolve: resolve,reject: reject)
+                self.triggerNext(callback, result: self.result!, resolve: resolve, reject: reject)
             case .Rejected:
                 reject(self.error!)
             case .Pending:
@@ -150,7 +150,7 @@ public final class Promise<T> {
         }
     }
     
-    private func triggerNext<X>(_ callback: (T) -> Promise<X>, result: T, resolve: @escaping (X) -> Void,reject: Rejector) {
+    private func triggerNext<X>(_ callback: (T) -> Promise<X>, result: T, resolve: @escaping (X) -> Void,reject: @escaping Rejector) {
         let nextPromise: Promise<X> = callback(result)
         _ = nextPromise
             .then {
