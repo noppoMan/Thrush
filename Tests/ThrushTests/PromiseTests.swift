@@ -10,7 +10,7 @@ import XCTest
 @testable import Thrush
 
 
-enum Error: ErrorProtocol {
+enum TestError: Error {
     case Something
 }
 
@@ -48,26 +48,25 @@ class PromiseTests: XCTestCase {
             }
             .then { _ -> Promise<Int> in
                 return Promise<Int> { _, reject in
-                    reject(Error.Something)
+                    reject(TestError.Something)
                 }
             }
             .then { _ in
                 XCTFail("Never called")
             }
-            .failure {
+            .`catch` {
                 XCTAssertNotNil($0)
         }
     }
     
     func testAll() {
         let p1 = Promise<Int> { resolve, _ in
-            let time = dispatch_time(DISPATCH_TIME_NOW, Int64(1 * NSEC_PER_SEC))
-            dispatch_after(time, dispatch_get_main_queue()) {
+            DispatchQueue.main.asyncAfter(deadline: .now()+1.0) {
                 resolve(1)
             }
         }
         
-        Thrush.all(promises: [p1, Promise<Int>.resolve(2)]).then {
+        _ = Thrush.all(promises: [p1, Promise<Int>.resolve(2)]).then {
             XCTAssertEqual([1, 2], $0)
             CFRunLoopStop(CFRunLoopGetCurrent())
         }
@@ -77,13 +76,12 @@ class PromiseTests: XCTestCase {
     
     func testMap(){
         let p1 = Promise<Int> { resolve, _ in
-            let time = dispatch_time(DISPATCH_TIME_NOW, Int64(1 * NSEC_PER_SEC))
-            dispatch_after(time, dispatch_get_main_queue()) {
+            DispatchQueue.main.asyncAfter(deadline: .now()+1.0) {
                 resolve(1)
             }
         }
         
-        Thrush.map(promises: [p1, Promise<Int>.resolve(2)]).then {
+        _ = Thrush.map(promises: [p1, Promise<Int>.resolve(2)]).then {
             XCTAssertEqual([1, 2], $0)
             CFRunLoopStop(CFRunLoopGetCurrent())
         }
